@@ -20,6 +20,26 @@ pip install -e '.[dev]'
 uvicorn costmeter.main:app --reload
 ```
 
+## CLI
+
+Post an event to a running costmeter service:
+
+```bash
+costmeter --base-url http://localhost:8000 event \
+  --team platform \
+  --model gpt-4.1-mini \
+  --input-tokens 1000 \
+  --output-tokens 250 \
+  --cost-usd 0.42
+```
+
+Print a report:
+
+```bash
+costmeter --base-url http://localhost:8000 report --team platform
+costmeter --base-url http://localhost:8000 report --daily --team platform
+```
+
 By default, events are stored in `costmeter.db`. Set `COSTMETER_DB_PATH` to use another SQLite file:
 
 ```bash
