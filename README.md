@@ -58,6 +58,23 @@ Returns totals for one team:
 }
 ```
 
+### GET `/report/daily?team=<team>&from=<date>&to=<date>`
+
+Returns per-day totals for one team within the inclusive date range:
+
+```json
+[
+  {
+    "team": "platform",
+    "event_count": 1,
+    "input_tokens": 1000,
+    "output_tokens": 250,
+    "cost_usd": 0.42,
+    "date": "2025-01-01"
+  }
+]
+```
+
 ## Test
 
 ```bash
