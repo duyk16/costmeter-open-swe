@@ -38,7 +38,8 @@ Request body:
   "model": "gpt-4.1-mini",
   "input_tokens": 1000,
   "output_tokens": 250,
-  "cost_usd": 0.42
+  "cost": 0.42,
+  "currency": "USD"
 }
 ```
 
@@ -54,7 +55,8 @@ Returns totals for one team:
   "event_count": 1,
   "input_tokens": 1000,
   "output_tokens": 250,
-  "cost_usd": 0.42
+  "cost": 0.42,
+  "currency": "USD"
 }
 ```
 
@@ -69,7 +71,8 @@ Returns per-day totals for one team within the inclusive date range:
     "event_count": 1,
     "input_tokens": 1000,
     "output_tokens": 250,
-    "cost_usd": 0.42,
+    "cost": 0.42,
+    "currency": "USD",
     "date": "2025-01-01"
   }
 ]

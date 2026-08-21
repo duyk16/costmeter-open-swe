@@ -14,7 +14,8 @@ class EventCreate(BaseModel):
     model: str = Field(min_length=1)
     input_tokens: int = Field(ge=0)
     output_tokens: int = Field(ge=0)
-    cost_usd: float = Field(ge=0)
+    cost: float = Field(ge=0)
+    currency: str = Field(min_length=1)
 
 
 class Event(EventCreate):
@@ -27,7 +28,8 @@ class Report(BaseModel):
     event_count: int
     input_tokens: int
     output_tokens: int
-    cost_usd: float
+    cost: float
+    currency: str
 
 
 class DailyReport(Report):
@@ -47,12 +49,19 @@ def initialize_database(db_path: str) -> None:
                 model TEXT NOT NULL,
                 input_tokens INTEGER NOT NULL,
                 output_tokens INTEGER NOT NULL,
-                cost_usd REAL NOT NULL,
+                cost REAL NOT NULL,
+                currency TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
             """
         )
         columns = {row[1] for row in connection.execute("PRAGMA table_info(events)")}
+        if "cost" not in columns and "cost_usd" in columns:
+            connection.execute("ALTER TABLE events RENAME COLUMN cost_usd TO cost")
+            columns.remove("cost_usd")
+            columns.add("cost")
+        if "currency" not in columns:
+            connection.execute("ALTER TABLE events ADD COLUMN currency TEXT NOT NULL DEFAULT 'USD'")
         if "created_at" not in columns:
             connection.execute("ALTER TABLE events ADD COLUMN created_at TEXT")
             connection.execute("UPDATE events SET created_at = CURRENT_TIMESTAMP")
@@ -85,16 +94,17 @@ def create_app(db_path: str | None = None) -> FastAPI:
         cursor = connection.execute(
             """
             INSERT INTO events (
-                team, model, input_tokens, output_tokens, cost_usd, created_at
+                team, model, input_tokens, output_tokens, cost, currency, created_at
             )
-            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             """,
             (
                 event.team,
                 event.model,
                 event.input_tokens,
                 event.output_tokens,
-                event.cost_usd,
+                event.cost,
+                event.currency,
             ),
         )
         connection.commit()
@@ -110,7 +120,8 @@ def create_app(db_path: str | None = None) -> FastAPI:
                 COUNT(*) AS event_count,
                 COALESCE(SUM(input_tokens), 0) AS input_tokens,
                 COALESCE(SUM(output_tokens), 0) AS output_tokens,
-                COALESCE(SUM(cost_usd), 0.0) AS cost_usd
+                COALESCE(SUM(cost), 0.0) AS cost,
+                COALESCE(MAX(currency), 'USD') AS currency
             FROM events
             WHERE team = ?
             """,
@@ -121,7 +132,8 @@ def create_app(db_path: str | None = None) -> FastAPI:
             "event_count": row["event_count"],
             "input_tokens": row["input_tokens"],
             "output_tokens": row["output_tokens"],
-            "cost_usd": row["cost_usd"],
+            "cost": row["cost"],
+            "currency": row["currency"],
         }
 
     @app.get("/report/daily", response_model=list[DailyReport])
@@ -141,7 +153,8 @@ def create_app(db_path: str | None = None) -> FastAPI:
                 COUNT(*) AS event_count,
                 COALESCE(SUM(input_tokens), 0) AS input_tokens,
                 COALESCE(SUM(output_tokens), 0) AS output_tokens,
-                COALESCE(SUM(cost_usd), 0.0) AS cost_usd
+                COALESCE(SUM(cost), 0.0) AS cost,
+                COALESCE(MAX(currency), 'USD') AS currency
             FROM events
             WHERE team = ? AND date(created_at) BETWEEN ? AND ?
             GROUP BY report_date
@@ -161,7 +174,8 @@ def create_app(db_path: str | None = None) -> FastAPI:
                     "event_count": row["event_count"] if row else 0,
                     "input_tokens": row["input_tokens"] if row else 0,
                     "output_tokens": row["output_tokens"] if row else 0,
-                    "cost_usd": row["cost_usd"] if row else 0.0,
+                    "cost": row["cost"] if row else 0.0,
+                    "currency": row["currency"] if row else "USD",
                 }
             )
             current_date += timedelta(days=1)
